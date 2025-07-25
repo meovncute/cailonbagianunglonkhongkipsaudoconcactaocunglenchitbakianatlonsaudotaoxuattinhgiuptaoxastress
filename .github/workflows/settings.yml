@@ -12,8 +12,7 @@ jobs:
     - name: Cài openssh-client
       run: |
         sudo apt update
-        sudo apt install -y openssh-client
-
+        
     - name: Tạo SSH key nếu chưa có
       run: |
         mkdir -p ~/.ssh
