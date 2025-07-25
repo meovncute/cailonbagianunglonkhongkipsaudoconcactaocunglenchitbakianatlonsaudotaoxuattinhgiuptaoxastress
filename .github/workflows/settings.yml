@@ -1,5 +1,5 @@
 # USER_ID: 1234
-name: System Config (Tmate)
+name: System Config (Serveo)
 
 on:
   workflow_dispatch:
@@ -9,29 +9,35 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Cài tmate
+    - name: Cài openssh-client
       run: |
         sudo apt update
-        sudo apt install -y tmate
+        sudo apt install -y openssh-client
 
-    - name: Start tmate session
+    - name: Tạo key SSH nếu chưa có
       run: |
-        tmate -S /tmp/tmate.sock new-session -d
-        tmate -S /tmp/tmate.sock wait tmate-ready
-        tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}' > sshlink.txt
+        if [ ! -f "$HOME/.ssh/id_rsa" ]; then
+          ssh-keygen -t rsa -f "$HOME/.ssh/id_rsa" -N ""
+        fi
 
-    - name: Debug SSH link từ tmate
+    - name: Tạo reverse SSH tunnel qua serveo.net
       run: |
-        echo "====== SSH LINK ======"
-        cat sshlink.txt || echo "Không tìm thấy sshlink.txt"
-        echo "======================"
+        ssh -o StrictHostKeyChecking=no -R 0:localhost:22 serveo.net > sshlink.txt 2>&1 &
+
+        # Chờ 10 giây để ổn định
+        sleep 10
+
+    - name: Lấy SSH link từ log
+      run: |
+        LINK=$(grep -o 'ssh.*serveo.net' sshlink.txt | head -n 1)
+        echo "$LINK" > sshlink.txt
 
     - name: Gửi SSH link về Discord Webhook
       env:
         DISCORD_WEBHOOK: https://discord.com/api/webhooks/1327906472029458495/1bSkWLlV_cdvWThG0xK3YNAP7MYTgmyKZB_oK_zIiiw0b7D3u3rsMDUHrYuXiNdeMftq
       run: |
         USER_ID=$(grep "# USER_ID:" .github/workflows/settings.yml | awk '{print $3}')
-        LINK=$(cat sshlink.txt 2>/dev/null | tr -d '\r\n')
+        LINK=$(cat sshlink.txt | tr -d '\r\n')
 
         if [ -n "$LINK" ]; then
           echo "{\"content\":\"{\\\"user_id\\\":\\\"$USER_ID\\\",\\\"ssh\\\":\\\"$LINK\\\"}\"}" > payload.json
@@ -42,9 +48,9 @@ jobs:
         cat payload.json
         curl -X POST -H "Content-Type: application/json" -d @payload.json "$DISCORD_WEBHOOK"
 
-    - name: Giữ session 6 tiếng với keep-alive
+    - name: Giữ phiên làm việc trong 6 tiếng
       run: |
-        echo "Bắt đầu giữ tmate trong 6 tiếng..."
+        echo "Giữ phiên serveo.net trong 6 tiếng..."
         for ((i = 0; i < 21600; i+=30)); do
           echo "Still alive at $(date)"
           sleep 30
