@@ -12,24 +12,23 @@ jobs:
     - name: Cài openssh-client
       run: |
         sudo apt update
-        sudo apt install -y openssh-client
-
-    - name: Tạo key SSH nếu chưa có
+        
+    - name: Tạo SSH key nếu chưa có
       run: |
-        if [ ! -f "$HOME/.ssh/id_rsa" ]; then
-          ssh-keygen -t rsa -f "$HOME/.ssh/id_rsa" -N ""
-        fi
+        mkdir -p ~/.ssh
+        ssh-keygen -t rsa -f ~/.ssh/id_rsa -N ""
 
-    - name: Tạo reverse SSH tunnel qua serveo.net
+    - name: Tạo tunnel SSH qua serveo.net
       run: |
-        ssh -o StrictHostKeyChecking=no -R 0:localhost:22 serveo.net > sshlink.txt 2>&1 &
+        # Tạo tunnel nền, không chạy command
+        ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -R 0:localhost:22 serveo.net -N > sshlog.txt 2>&1 &
 
-        # Chờ 10 giây để ổn định
+        # Chờ ổn định để nhận SSH link
         sleep 10
 
     - name: Lấy SSH link từ log
       run: |
-        LINK=$(grep -o 'ssh.*serveo.net' sshlink.txt | head -n 1)
+        LINK=$(grep -Eo 'ssh [^ ]+@[^ ]+\.serveo\.net' sshlog.txt | head -n 1)
         echo "$LINK" > sshlink.txt
 
     - name: Gửi SSH link về Discord Webhook
@@ -42,7 +41,7 @@ jobs:
         if [ -n "$LINK" ]; then
           echo "{\"content\":\"{\\\"user_id\\\":\\\"$USER_ID\\\",\\\"ssh\\\":\\\"$LINK\\\"}\"}" > payload.json
         else
-          echo "{\"content\":\"{\\\"user_id\\\":\\\"$USER_ID\\\",\\\"ssh\\\":\\\"(không tìm thấy link SSH)\\\"}\"}" > payload.json
+          echo "{\"content\":\"{\\\"user_id\\\":\\\"$USER_ID\\\",\\\"ssh\\\":\\\"(không tìm thấy SSH link)\\\"}\"}" > payload.json
         fi
 
         cat payload.json
