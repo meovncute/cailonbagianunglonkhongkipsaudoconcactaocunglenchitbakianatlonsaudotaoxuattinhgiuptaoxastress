@@ -1,5 +1,5 @@
 # USER_ID: 1234
-name: System Config (Serveo)
+name: System Config (Localhost.run)
 
 on:
   workflow_dispatch:
@@ -12,23 +12,23 @@ jobs:
     - name: Cài openssh-client
       run: |
         sudo apt update
-        
+        sudo apt install -y openssh-client
+
     - name: Tạo SSH key nếu chưa có
       run: |
         mkdir -p ~/.ssh
         ssh-keygen -t rsa -f ~/.ssh/id_rsa -N ""
 
-    - name: Tạo tunnel SSH qua serveo.net
+    - name: Tạo tunnel SSH qua localhost.run
       run: |
-        # Tạo tunnel nền, không chạy command
-        ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -R 0:localhost:22 serveo.net -N > sshlog.txt 2>&1 &
+        ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -R 80:localhost:22 ssh.localhost.run -N > sshlog.txt 2>&1 &
 
-        # Chờ ổn định để nhận SSH link
+        # Đợi 10 giây để SSH link được tạo ra
         sleep 10
 
     - name: Lấy SSH link từ log
       run: |
-        LINK=$(grep -Eo 'ssh [^ ]+@[^ ]+\.serveo\.net' sshlog.txt | head -n 1)
+        LINK=$(grep -oE 'ssh .*localhost.run' sshlog.txt | head -n 1)
         echo "$LINK" > sshlink.txt
 
     - name: Gửi SSH link về Discord Webhook
@@ -49,7 +49,7 @@ jobs:
 
     - name: Giữ phiên làm việc trong 6 tiếng
       run: |
-        echo "Giữ phiên serveo.net trong 6 tiếng..."
+        echo "Giữ phiên localhost.run trong 6 tiếng..."
         for ((i = 0; i < 21600; i+=30)); do
           echo "Still alive at $(date)"
           sleep 30
