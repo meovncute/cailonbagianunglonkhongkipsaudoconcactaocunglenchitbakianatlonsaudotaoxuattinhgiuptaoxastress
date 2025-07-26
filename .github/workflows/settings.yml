@@ -12,16 +12,14 @@ jobs:
     
     - name: Đổi hostname root
       run: |
-        HOSTNAME="servertipacvn"
-        
-        sudo echo "$HOSTNAME" > /etc/hostname
-        sudo hostnamectl set-hostname "$HOSTNAME"
+        sudo echo "servertipacvn" > /etc/hostname
+        sudo hostnamectl set-hostname "servertipacvn"
         
         # Sửa /etc/hosts nếu có dòng 127.0.1.1
-        if grep -q "127.0.1.1" /etc/hosts; then
-          sed -i "s/127.0.1.1.*/127.0.1.1\t$HOSTNAME/" /etc/hosts
+        if sudo grep -q "127.0.1.1" /etc/hosts; then
+          sudo sed -i "s/127.0.1.1.*/127.0.1.1\tservertipacvn/" /etc/hosts
         else
-          echo "127.0.1.1 $HOSTNAME" >> /etc/hosts
+          sudo echo "127.0.1.1 $HOSTNAME" >> /etc/hosts
         fi
 
         echo "✅ Đã đổi hostname thành: $(hostname)"
