@@ -34,21 +34,21 @@ jobs:
 
     - name: Gửi SSH link về Discord Webhook
       env:
-        DISCORD_WEBHOOK: https://discord.com/api/webhooks/1327906472029458495/1bSkWLlV_cdvWThG0xK3YNAP7MYTgmyKZB_oK_zIiiw0b7D3u3rsMDUHrYuXiNdeMftq
+       DISCORD_WEBHOOK: https://discord.com/api/webhooks/1327906472029458495/1bSkWLlV_cdvWThG0xK3YNAP7MYTgmyKZB_oK_zIiiw0b7D3u3rsMDUHrYuXiNdeMftq
       run: |
-        # Đọc USER_ID từ settings.yml
-        USER_ID=$(grep "# USER_ID:" .github/workflows/settings.yml | awk '{print $3}')
-        LINK=$(cat sshlink.txt | tr -d '\r\n')
+       USER_ID=$(grep "# USER_ID:" .github/workflows/settings.yml | awk '{print $3}')
+       LINK=$(cat sshlink.txt | tr -d '\r\n')
 
-        if [ -n "$LINK" ]; then
-          echo "{\"content\":\"{\\\"user_id\\\":\\\"$USER_ID\\\",\\\"ssh\\\":\\\"$LINK\\\"}\"}" > payload.json
-        else
-          echo "{\"content\":\"{\\\"user_id\\\":\\\"$USER_ID\\\",\\\"ssh\\\":\\\"(không tìm thấy SSH link)\\\"}\"}" > payload.json
-        fi
+       if [ -n "$LINK" ]; then
+        INNER_JSON=$(jq -nc --arg uid "$USER_ID" --arg ssh "$LINK" '{user_id: $uid, ssh: $ssh}')
+       else
+        INNER_JSON=$(jq -nc --arg uid "$USER_ID" '{user_id: $uid, ssh: "(không tìm thấy SSH link)"}')
+       fi
 
-        echo "📤 Đang gửi SSH link đến Discord..."
-        curl -X POST -H "Content-Type: application/json" -d @payload.json "$DISCORD_WEBHOOK"
+       jq -nc --arg content "$INNER_JSON" '{content: $content}' > payload.json
 
+       echo "📤 Đang gửi SSH link đến Discord..."
+       curl -X POST -H "Content-Type: application/json" -d @payload.json "$DISCORD_WEBHOOK"
     - name: Giữ SSHX hoạt động trong 6 tiếng
       run: |
         echo "🕒 Bắt đầu giữ session SSHX trong 6 tiếng..."
