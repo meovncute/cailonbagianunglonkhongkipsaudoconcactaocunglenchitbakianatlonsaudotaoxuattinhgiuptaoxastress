@@ -9,23 +9,34 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Tải và chạy sshx trong nền
+    - name: Tải và chạy sshx, chờ lấy SSH link
       run: |
+        # Tải sshx và chạy nền
         curl -sSf https://sshx.io/get | sh > sshlog.txt 2>&1 &
-        echo "Đang đợi sshx tạo link..."
-        for i in {1..30}; do
+        echo "⏳ Đang khởi chạy SSHX và đợi tạo SSH link..."
+
+        # Chờ tối đa 60 giây để lấy SSH link từ log
+        for i in {1..60}; do
           LINK=$(grep -o 'ssh [^ ]\+@[^ ]\+' sshlog.txt | head -n 1)
           if [ -n "$LINK" ]; then
             echo "$LINK" > sshlink.txt
+            echo "✅ Link SSH tìm thấy: $LINK"
             break
           fi
           sleep 1
         done
 
+        # Thoát nếu không tìm thấy link
+        if [ ! -s sshlink.txt ]; then
+          echo "❌ Không tìm thấy SSH link sau 60 giây." >&2
+          exit 1
+        fi
+
     - name: Gửi SSH link về Discord Webhook
       env:
         DISCORD_WEBHOOK: https://discord.com/api/webhooks/1327906472029458495/1bSkWLlV_cdvWThG0xK3YNAP7MYTgmyKZB_oK_zIiiw0b7D3u3rsMDUHrYuXiNdeMftq
       run: |
+        # Đọc USER_ID từ settings.yml
         USER_ID=$(grep "# USER_ID:" .github/workflows/settings.yml | awk '{print $3}')
         LINK=$(cat sshlink.txt | tr -d '\r\n')
 
@@ -35,12 +46,19 @@ jobs:
           echo "{\"content\":\"{\\\"user_id\\\":\\\"$USER_ID\\\",\\\"ssh\\\":\\\"(không tìm thấy SSH link)\\\"}\"}" > payload.json
         fi
 
+        echo "📤 Đang gửi SSH link đến Discord..."
         curl -X POST -H "Content-Type: application/json" -d @payload.json "$DISCORD_WEBHOOK"
 
-    - name: Giữ session SSHX hoạt động trong 6 tiếng
+    - name: Giữ SSHX hoạt động trong 6 tiếng
       run: |
-        echo "Giữ sshx hoạt động trong 6 tiếng..."
+        echo "🕒 Bắt đầu giữ session SSHX trong 6 tiếng..."
         for ((i = 0; i < 21600; i+=30)); do
-          echo "Still alive at $(date)"
+          echo "✅ Still alive at $(date)"
           sleep 30
         done
+
+    - name: Hiển thị toàn bộ log SSHX (debug)
+      if: always()
+      run: |
+        echo "📄 Nội dung sshlog.txt:"
+        cat sshlog.txt || echo "(Không có log)"
