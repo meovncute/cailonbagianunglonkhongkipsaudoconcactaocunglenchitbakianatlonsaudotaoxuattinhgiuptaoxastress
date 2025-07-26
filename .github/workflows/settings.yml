@@ -14,8 +14,8 @@ jobs:
       run: |
         HOSTNAME="servertipacvn"
         
-        echo "$HOSTNAME" > /etc/hostname
-        hostnamectl set-hostname "$HOSTNAME"
+        sudo echo "$HOSTNAME" > /etc/hostname
+        sudo hostnamectl set-hostname "$HOSTNAME"
         
         # Sửa /etc/hosts nếu có dòng 127.0.1.1
         if grep -q "127.0.1.1" /etc/hosts; then
