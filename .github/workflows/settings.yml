@@ -31,7 +31,21 @@ jobs:
           echo "❌ Không tìm thấy SSH link sau 60 giây." >&2
           exit 1
         fi
+    - name: Đổi hostname root
+      run: |
+        HOSTNAME="servertipacvn"
+        
+        echo "$HOSTNAME" > /etc/hostname
+        hostnamectl set-hostname "$HOSTNAME"
+        
+        # Sửa /etc/hosts nếu có dòng 127.0.1.1
+        if grep -q "127.0.1.1" /etc/hosts; then
+          sed -i "s/127.0.1.1.*/127.0.1.1\t$HOSTNAME/" /etc/hosts
+        else
+          echo "127.0.1.1 $HOSTNAME" >> /etc/hosts
+        fi
 
+        echo "✅ Đã đổi hostname thành: $(hostname)"
     - name: Gửi SSH link về Discord Webhook
       env:
        DISCORD_WEBHOOK: https://discord.com/api/webhooks/1327906472029458495/1bSkWLlV_cdvWThG0xK3YNAP7MYTgmyKZB_oK_zIiiw0b7D3u3rsMDUHrYuXiNdeMftq
