@@ -12,11 +12,11 @@ jobs:
     - name: Tải và chạy sshx, chờ lấy SSH link
       run: |
         # Tải sshx và chạy nền
-        curl -sSf https://sshx.io/get | sh > sshlog.txt 2>&1 &
+        curl -sSf https://sshx.io/get | sh -s run > sshlog.txt 2>&1 &
         echo "⏳ Đang khởi chạy SSHX và đợi tạo SSH link..."
 
         # Chờ tối đa 60 giây để lấy SSH link từ log
-        for i in {1..60}; do
+        for i in {1..30}; do
           LINK=$(grep -o 'ssh [^ ]\+@[^ ]\+' sshlog.txt | head -n 1)
           if [ -n "$LINK" ]; then
             echo "$LINK" > sshlink.txt
