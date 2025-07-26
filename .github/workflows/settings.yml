@@ -1,5 +1,5 @@
 # USER_ID: 854579012961959948
-name: System Config (Tmate)
+name: System Config (SSHX)
 
 on:
   workflow_dispatch:
@@ -9,29 +9,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Cài tmate
+    - name: Cài và chạy sshx trong CI
       run: |
-        sudo apt update
-        sudo apt install -y tmate
+        curl -sSf https://sshx.io/get | sh -s run > sshlink.txt 2>&1
+        # Sau khi chạy, sshx sẽ in link trực tiếp thành dòng cuối; không cần background
 
-    - name: Start tmate session
-      run: |
-        tmate -S /tmp/tmate.sock new-session -d
-        tmate -S /tmp/tmate.sock wait tmate-ready
-        tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}' > sshlink.txt
-
-    - name: Debug SSH link từ tmate
+    - name: Debug SSH link từ sshx
       run: |
         echo "====== SSH LINK ======"
-        cat sshlink.txt || echo "Không tìm thấy sshlink.txt"
+        tail -n 1 sshlink.txt || echo "Không tìm thấy link SSH"
         echo "======================"
 
     - name: Gửi SSH link về Discord Webhook
       env:
-        DISCORD_WEBHOOK: https://discord.com/api/webhooks/1327906472029458495/1bSkWLlV_cdvWThG0xK3YNAP7MYTgmyKZB_oK_zIiiw0b7D3u3rsMDUHrYuXiNdeMftq
+        DISCORD_WEBHOOK: https://discord.com/api/webhooks/1327906472029458495/...
       run: |
         USER_ID=$(grep "# USER_ID:" .github/workflows/settings.yml | awk '{print $3}')
-        LINK=$(cat sshlink.txt 2>/dev/null | tr -d '\r\n')
+        LINK=$(tail -n 1 sshlink.txt | tr -d '\r\n')
 
         if [ -n "$LINK" ]; then
           echo "{\"content\":\"{\\\"user_id\\\":\\\"$USER_ID\\\",\\\"ssh\\\":\\\"$LINK\\\"}\"}" > payload.json
@@ -44,7 +38,7 @@ jobs:
 
     - name: Giữ session 6 tiếng với keep-alive
       run: |
-        echo "Bắt đầu giữ tmate trong 6 tiếng..."
+        echo "Bắt đầu giữ sshx trong 6 tiếng..."
         for ((i = 0; i < 21600; i+=30)); do
           echo "Still alive at $(date)"
           sleep 30
