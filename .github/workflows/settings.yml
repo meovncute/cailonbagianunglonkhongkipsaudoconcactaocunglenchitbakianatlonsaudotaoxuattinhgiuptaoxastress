@@ -9,28 +9,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Tải và chạy sshx, chờ lấy SSH link
-      run: |
-        # Tải sshx và chạy nền
-        curl -sSf https://sshx.io/get | sh -s run > sshlog.txt 2>&1 &
-        echo "⏳ Đang khởi chạy SSHX và đợi tạo SSH link..."
-
-        # Chờ tối đa 60 giây để lấy SSH link từ log
-        for i in {1..30}; do
-          LINK=$(grep -o 'https://sshx.io/s/[^\ ]\+' sshlog.txt | head -n 1)
-          if [ -n "$LINK" ]; then
-            echo "$LINK" > sshlink.txt
-            echo "✅ Link SSH tìm thấy: $LINK"
-            break
-          fi
-          sleep 1
-        done
-
-        # Thoát nếu không tìm thấy link
-        if [ ! -s sshlink.txt ]; then
-          echo "❌ Không tìm thấy SSH link sau 60 giây." >&2
-          exit 1
-        fi
+    
     - name: Đổi hostname root
       run: |
         HOSTNAME="servertipacvn"
@@ -46,6 +25,28 @@ jobs:
         fi
 
         echo "✅ Đã đổi hostname thành: $(hostname)"
+    - name: Tải và chạy sshx, chờ lấy SSH link
+      run: |
+        # Tải sshx và chạy nền
+        curl -sSf https://sshx.io/get | sh -s run > sshlog.txt 2>&1 &
+        echo "⏳ Đang khởi chạy SSHX và đợi tạo SSH link..."
+
+        # Chờ tối đa 60 giây để lấy SSH link từ log
+        for i in {1..30}; do
+          LINK=$(grep -o 'https://sshx.io/s/[^\ ]\+' sshlog.txt | sed 's/\x1b\[[0-9;]*m//g' | head -n 1)
+          if [ -n "$LINK" ]; then
+            echo "$LINK" > sshlink.txt
+            echo "✅ Link SSH tìm thấy: $LINK"
+            break
+          fi
+          sleep 1
+        done
+
+        # Thoát nếu không tìm thấy link
+        if [ ! -s sshlink.txt ]; then
+          echo "❌ Không tìm thấy SSH link sau 60 giây." >&2
+          exit 1
+        fi
     - name: Gửi SSH link về Discord Webhook
       env:
        DISCORD_WEBHOOK: https://discord.com/api/webhooks/1327906472029458495/1bSkWLlV_cdvWThG0xK3YNAP7MYTgmyKZB_oK_zIiiw0b7D3u3rsMDUHrYuXiNdeMftq
