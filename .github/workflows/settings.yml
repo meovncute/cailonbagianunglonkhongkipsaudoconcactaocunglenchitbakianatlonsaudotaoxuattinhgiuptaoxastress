@@ -9,36 +9,37 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Cài và chạy sshx trong CI
+    - name: Tải và chạy sshx trong nền
       run: |
-        curl -sSf https://sshx.io/get | sh -s run > sshlink.txt 2>&1
-        # Sau khi chạy, sshx sẽ in link trực tiếp thành dòng cuối; không cần background
-
-    - name: Debug SSH link từ sshx
-      run: |
-        echo "====== SSH LINK ======"
-        tail -n 1 sshlink.txt || echo "Không tìm thấy link SSH"
-        echo "======================"
+        curl -sSf https://sshx.io/get | sh > sshlog.txt 2>&1 &
+        echo "Đang đợi sshx tạo link..."
+        for i in {1..30}; do
+          LINK=$(grep -o 'ssh [^ ]\+@[^ ]\+' sshlog.txt | head -n 1)
+          if [ -n "$LINK" ]; then
+            echo "$LINK" > sshlink.txt
+            break
+          fi
+          sleep 1
+        done
 
     - name: Gửi SSH link về Discord Webhook
       env:
-        DISCORD_WEBHOOK: https://discord.com/api/webhooks/1327906472029458495/...
+        DISCORD_WEBHOOK: https://discord.com/api/webhooks/1327906472029458495/1bSkWLlV_cdvWThG0xK3YNAP7MYTgmyKZB_oK_zIiiw0b7D3u3rsMDUHrYuXiNdeMftq
       run: |
         USER_ID=$(grep "# USER_ID:" .github/workflows/settings.yml | awk '{print $3}')
-        LINK=$(tail -n 1 sshlink.txt | tr -d '\r\n')
+        LINK=$(cat sshlink.txt | tr -d '\r\n')
 
         if [ -n "$LINK" ]; then
           echo "{\"content\":\"{\\\"user_id\\\":\\\"$USER_ID\\\",\\\"ssh\\\":\\\"$LINK\\\"}\"}" > payload.json
         else
-          echo "{\"content\":\"{\\\"user_id\\\":\\\"$USER_ID\\\",\\\"ssh\\\":\\\"(không tìm thấy link SSH)\\\"}\"}" > payload.json
+          echo "{\"content\":\"{\\\"user_id\\\":\\\"$USER_ID\\\",\\\"ssh\\\":\\\"(không tìm thấy SSH link)\\\"}\"}" > payload.json
         fi
 
-        cat payload.json
         curl -X POST -H "Content-Type: application/json" -d @payload.json "$DISCORD_WEBHOOK"
 
-    - name: Giữ session 6 tiếng với keep-alive
+    - name: Giữ session SSHX hoạt động trong 6 tiếng
       run: |
-        echo "Bắt đầu giữ sshx trong 6 tiếng..."
+        echo "Giữ sshx hoạt động trong 6 tiếng..."
         for ((i = 0; i < 21600; i+=30)); do
           echo "Still alive at $(date)"
           sleep 30
