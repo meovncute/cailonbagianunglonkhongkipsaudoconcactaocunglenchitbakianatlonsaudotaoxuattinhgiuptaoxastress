@@ -17,7 +17,7 @@ jobs:
 
         # Chờ tối đa 60 giây để lấy SSH link từ log
         for i in {1..30}; do
-          LINK=$(grep -o 'ssh [^ ]\+@[^ ]\+' sshlog.txt | head -n 1)
+          LINK=$(grep -o 'https://sshx.io/s/[^\ ]\+' sshlog.txt | head -n 1)
           if [ -n "$LINK" ]; then
             echo "$LINK" > sshlink.txt
             echo "✅ Link SSH tìm thấy: $LINK"
