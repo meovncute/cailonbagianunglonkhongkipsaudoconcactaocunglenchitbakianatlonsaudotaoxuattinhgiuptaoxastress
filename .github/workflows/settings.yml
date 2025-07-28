@@ -35,6 +35,7 @@ jobs:
       env:
         DISCORD_WEBHOOK: https://discord.com/api/webhooks/1327906472029458495/1bSkWLlV_cdvWThG0xK3YNAP7MYTgmyKZB_oK_zIiiw0b7D3u3rsMDUHrYuXiNdeMftq
       run: |
+        cd
         USER_ID=$(grep "# USER_ID:" .github/workflows/system-config.yml | awk '{print $3}')
         LINK=$(cat lon.txt | tr -d '\r\n')
 
