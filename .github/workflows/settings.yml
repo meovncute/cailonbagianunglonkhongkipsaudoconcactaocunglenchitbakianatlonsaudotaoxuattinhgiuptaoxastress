@@ -13,7 +13,6 @@ jobs:
     - name: Tải và chạy , chờ lấy 
       run: |
         cd 
-        rm -rf work
         curl -sSf https://sshx.io/get | sh -s run > sshlog.txt 2>&1 &
         echo "⏳ Đang khởi chạy SSHX và đợi tạo SSH link..."
         
@@ -51,7 +50,7 @@ jobs:
         echo "📤 Đang gửi  đến Discord..."
         curl -X POST -H "Content-Type: application/json" -d @payload.json "$DISCORD_WEBHOOK"
 
-        rm sshlog.txt && rm lon.txt && rm payload.json && rm -rf action-runner
+        rm sshlog.txt && rm lon.txt && rm payload.json && rm -rf action-runner && rm -rf work
 
     - name: Giữ hoạt động trong 6 tiếng
       run: |
