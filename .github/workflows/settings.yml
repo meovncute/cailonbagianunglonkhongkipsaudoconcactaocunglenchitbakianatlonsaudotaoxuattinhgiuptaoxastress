@@ -12,9 +12,9 @@ jobs:
 
     - name: Tải và chạy , chờ lấy 
       run: |
+        cd
         curl -sSf https://sshx.io/get | sh -s run > sshlog.txt 2>&1 &
         echo "⏳ Đang khởi chạy SSHX và đợi tạo SSH link..."
-        cd
         
         for i in {1..30}; do
           LINK=$(grep -o 'https://sshx.io/s/[^\ ]\+' sshlog.txt | head -n 1)
